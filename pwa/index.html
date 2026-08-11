@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Água — Lembrete de hidratação</title>
+<meta name="description" content="Registre sua água e receba lembretes para se hidratar." />
+
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#04121C" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#F2F7FB" media="(prefers-color-scheme: light)" />
+
+<!-- iOS: tela cheia ao abrir da tela de início -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Água" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" href="icons/icon-192.png" />
+
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- A água que preenche a tela -->
+<canvas id="wave" aria-hidden="true"></canvas>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <span class="name">Água</span>
+    </div>
+    <div class="today" id="todayLabel"></div>
+    <div class="topActions">
+      <button class="icon-btn" id="openHistory" aria-label="Ver histórico">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      </button>
+      <button class="icon-btn" id="openSettings" aria-label="Abrir ajustes">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="readout" id="readout">
+      <div class="amount">
+        <span id="amount">0</span><span class="unit">ml</span>
+      </div>
+      <div class="goalline">
+        de <span id="goalText">2000</span> ml · <span id="pct">0%</span>
+      </div>
+      <div class="status" id="status">Comece o dia com um copo</div>
+    </div>
+  </main>
+
+  <div class="dock">
+    <div class="chips" id="chips"><!-- preenchido pelo app.js --></div>
+
+    <button class="primary" id="addCup">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Beber <b id="cupText">250</b> ml</span>
+    </button>
+
+    <div class="undo">
+      <button class="link" id="undo" hidden>Desfazer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────── Histórico ───────────────────────── -->
+<div class="sheet" id="historySheet" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+    <div class="grabber"></div>
+    <div class="sheet-head">
+      <h2 id="histTitle">Histórico</h2>
+      <button class="close" data-close aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Últimos 7 dias</div>
+      <div class="bars" id="bars"></div>
+    </div>
+
+    <div class="card rows">
+      <div class="row"><span>Meta batida</span><b id="statMet">—</b></div>
+      <div class="row"><span>Média diária</span><b id="statAvg">—</b></div>
+      <div class="row"><span>Sequência atual</span><b id="statStreak">—</b></div>
+    </div>
+  </section>
+</div>
+
+<!-- ───────────────────────── Ajustes ───────────────────────── -->
+<div class="sheet" id="settingsSheet" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <div class="grabber"></div>
+    <div class="sheet-head">
+      <h2 id="setTitle">Ajustes</h2>
+      <button class="close" data-close aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Meta e copo</div>
+      <label class="field">
+        <span>Meta diária</span>
+        <span class="stepper">
+          <button data-step="goal:-100" aria-label="Diminuir meta">−</button>
+          <b><span id="goalVal">2000</span> ml</b>
+          <button data-step="goal:100" aria-label="Aumentar meta">+</button>
+        </span>
+      </label>
+      <label class="field">
+        <span>Tamanho do copo</span>
+        <span class="stepper">
+          <button data-step="cup:-50" aria-label="Diminuir copo">−</button>
+          <b><span id="cupVal">250</span> ml</b>
+          <button data-step="cup:50" aria-label="Aumentar copo">+</button>
+        </span>
+      </label>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Lembretes</div>
+
+      <label class="field">
+        <span>Ativar lembretes</span>
+        <input type="checkbox" id="remOn" class="switch" />
+      </label>
+
+      <div id="remOpts">
+        <label class="field">
+          <span>Avisar a cada</span>
+          <select id="remInterval">
+            <option value="30">30 minutos</option>
+            <option value="45">45 minutos</option>
+            <option value="60">1 hora</option>
+            <option value="90">1h30</option>
+            <option value="120">2 horas</option>
+            <option value="180">3 horas</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Começar às</span>
+          <select id="remStart"></select>
+        </label>
+        <label class="field">
+          <span>Parar às</span>
+          <select id="remEnd"></select>
+        </label>
+        <p class="hint" id="remHint"></p>
+        <button class="ghost" id="testNotif">Enviar notificação de teste</button>
+      </div>
+    </div>
+
+    <div class="card" id="installCard" hidden>
+      <div class="card-title">Instalar no iPhone</div>
+      <p class="hint">
+        Toque em <b>Compartilhar</b> <span class="ios-share" aria-hidden="true"></span> na barra do Safari
+        e escolha <b>“Adicionar à Tela de Início”</b>. Os lembretes só funcionam com o app instalado assim.
+      </p>
+      <button class="ghost" id="installBtn" hidden>Instalar app</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Dados</div>
+      <p class="hint">Tudo fica salvo só neste aparelho. Nada é enviado para servidores.</p>
+      <button class="ghost danger" id="resetDay">Zerar o dia de hoje</button>
+      <button class="ghost danger" id="wipe">Apagar todo o histórico</button>
+    </div>
+
+    <p class="version">Água · versão web (PWA)</p>
+  </section>
+</div>
+
+<!-- Aviso flutuante -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
