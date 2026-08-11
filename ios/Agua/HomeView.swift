@@ -19,7 +19,10 @@ struct HomeView: View {
             .background(Color(.systemGroupedBackground))
         }
         .sheet(isPresented: $showCustom) {
-            CustomAmountSheet().presentationDetents([.medium])
+            // Passado explicitamente: um EnvironmentObject ausente derruba o app.
+            CustomAmountSheet()
+                .environmentObject(store)
+                .presentationDetents([.medium])
         }
     }
 

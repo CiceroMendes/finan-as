@@ -10,40 +10,56 @@ struct DayLog: Codable, Identifiable {
 
 /// Fonte de verdade do app: metas, consumo do dia e histórico.
 /// Persiste tudo em `UserDefaults` (nada sai do aparelho).
+///
+/// As preferências usam `@Published` + gravação manual em vez de `@AppStorage`:
+/// dentro de um `ObservableObject`, o `@AppStorage` não emite `objectWillChange`
+/// (as telas não se atualizariam) e escritas vindas de um `Binding` não acionam
+/// o `didSet` (os lembretes não seriam reagendados).
 @MainActor
 final class WaterStore: ObservableObject {
 
-    // MARK: Configurações (persistidas via AppStorage)
+    private enum Key {
+        static let goal     = "dailyGoalML"
+        static let cup      = "cupSizeML"
+        static let remOn    = "remindersEnabled"
+        static let interval = "reminderIntervalMin"
+        static let start    = "startHour"
+        static let end      = "endHour"
+        static let history  = "waterHistory"
+    }
 
-    @AppStorage("dailyGoalML") var dailyGoalML: Int = 2000
-    @AppStorage("cupSizeML")   var cupSizeML: Int = 250
+    // MARK: Configurações
+
+    @Published var dailyGoalML: Int          { didSet { persistSettings() } }
+    @Published var cupSizeML: Int            { didSet { persistSettings() } }
 
     /// Notificações ligadas?
-    @AppStorage("remindersEnabled") var remindersEnabled: Bool = true {
-        didSet { rescheduleReminders() }
-    }
+    @Published var remindersEnabled: Bool    { didSet { settingsChanged() } }
     /// Intervalo entre lembretes, em minutos.
-    @AppStorage("reminderIntervalMin") var reminderIntervalMin: Int = 90 {
-        didSet { rescheduleReminders() }
-    }
+    @Published var reminderIntervalMin: Int  { didSet { settingsChanged() } }
     /// Hora em que os lembretes começam (0–23).
-    @AppStorage("startHour") var startHour: Int = 8 {
-        didSet { rescheduleReminders() }
-    }
+    @Published var startHour: Int            { didSet { settingsChanged() } }
     /// Hora em que os lembretes param (0–23).
-    @AppStorage("endHour") var endHour: Int = 22 {
-        didSet { rescheduleReminders() }
-    }
+    @Published var endHour: Int              { didSet { settingsChanged() } }
 
     // MARK: Estado do consumo
 
     @Published private(set) var todayML: Int = 0
     @Published private(set) var history: [DayLog] = []
 
-    private let historyKey = "waterHistory"
+    private let defaults = UserDefaults.standard
     private let notifications = NotificationManager()
 
     init() {
+        // Atribuições diretas no init não acionam `didSet` — é o que queremos aqui.
+        let d = UserDefaults.standard
+        dailyGoalML         = d.object(forKey: Key.goal)     as? Int  ?? 2000
+        cupSizeML           = d.object(forKey: Key.cup)      as? Int  ?? 250
+        remindersEnabled    = d.object(forKey: Key.remOn)    as? Bool ?? true
+        reminderIntervalMin = d.object(forKey: Key.interval) as? Int  ?? 90
+        startHour           = d.object(forKey: Key.start)    as? Int  ?? 8
+        endHour             = d.object(forKey: Key.end)      as? Int  ?? 22
+
         loadHistory()
         refreshToday()
     }
@@ -68,7 +84,6 @@ final class WaterStore: ObservableObject {
     func add(ml: Int) {
         todayML = max(todayML + ml, 0)
         saveToday()
-        objectWillChange.send()
     }
 
     /// Zera o consumo do dia atual.
@@ -79,26 +94,37 @@ final class WaterStore: ObservableObject {
 
     // MARK: Persistência
 
+    private func persistSettings() {
+        defaults.set(dailyGoalML, forKey: Key.goal)
+        defaults.set(cupSizeML, forKey: Key.cup)
+        defaults.set(remindersEnabled, forKey: Key.remOn)
+        defaults.set(reminderIntervalMin, forKey: Key.interval)
+        defaults.set(startHour, forKey: Key.start)
+        defaults.set(endHour, forKey: Key.end)
+    }
+
+    /// Preferência de lembrete mudou: grava e reprograma as notificações.
+    private func settingsChanged() {
+        persistSettings()
+        rescheduleReminders()
+    }
+
     private func loadHistory() {
-        guard let data = UserDefaults.standard.data(forKey: historyKey),
+        guard let data = defaults.data(forKey: Key.history),
               let decoded = try? JSONDecoder().decode([DayLog].self, from: data) else { return }
         history = decoded.sorted { $0.date > $1.date }
     }
 
     private func persistHistory() {
         if let data = try? JSONEncoder().encode(history) {
-            UserDefaults.standard.set(data, forKey: historyKey)
+            defaults.set(data, forKey: Key.history)
         }
     }
 
     /// Garante que `todayML` reflete o dia de hoje (vira o dia à meia-noite).
     func refreshToday() {
         let key = Self.dateKey(Date())
-        if let log = history.first(where: { $0.date == key }) {
-            todayML = log.amountML
-        } else {
-            todayML = 0
-        }
+        todayML = history.first(where: { $0.date == key })?.amountML ?? 0
     }
 
     private func saveToday() {
@@ -135,15 +161,20 @@ final class WaterStore: ObservableObject {
     }
 
     func rescheduleReminders() {
+        let enabled = remindersEnabled
+        let interval = reminderIntervalMin
+        let start = startHour
+        let end = endHour
+
         Task {
-            if remindersEnabled {
+            if enabled {
                 await notifications.scheduleReminders(
-                    intervalMinutes: reminderIntervalMin,
-                    startHour: startHour,
-                    endHour: endHour
+                    intervalMinutes: interval,
+                    startHour: start,
+                    endHour: end
                 )
             } else {
-                notifications.cancelAll()
+                await notifications.cancelAll()
             }
         }
     }

@@ -30,7 +30,7 @@ struct SettingsView: View {
                                 value: $store.endHour, in: 1...23)
 
                         if store.startHour >= store.endHour {
-                            Label("A hora de início deve ser antes da de término.",
+                            Label("Nenhum lembrete será enviado: a hora de início precisa ser menor que a de término.",
                                   systemImage: "exclamationmark.triangle.fill")
                                 .font(.caption)
                                 .foregroundStyle(.orange)
