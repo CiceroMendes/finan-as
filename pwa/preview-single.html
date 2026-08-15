@@ -1,0 +1,1285 @@
+<title>Água — Lembrete de hidratação</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Água — PWA de hidratação
+   A tela inteira é o copo: a água sobe conforme o dia avança.
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  /* Claro (padrão) */
+  --ground:   #EDF5FA;
+  --panel:    #FFFFFF;
+  --ink:      #082334;
+  --muted:    #5A7488;
+  --line:     rgba(8, 35, 52, .10);
+  --field:    rgba(8, 35, 52, .05);
+
+  --crest:    #7EE0F7;   /* topo da onda  */
+  --water:    #1C93E0;   /* corpo da água */
+  --deep:     #0A5FA8;   /* fundo         */
+  --gold:     #E8A317;   /* meta batida   */
+  --danger:   #D9443F;
+
+  --on-water: #04212F;   /* texto sobre a água, no tema claro */
+  --shadow:   0 10px 34px -12px rgba(8, 60, 95, .38);
+
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:   #04121C;
+    --panel:    #0C2130;
+    --ink:      #E4F0F8;
+    --muted:    #829AAB;
+    --line:     rgba(228, 240, 248, .13);
+    --field:    rgba(228, 240, 248, .07);
+
+    --crest:    #56CBEE;
+    --water:    #0E77CB;
+    --deep:     #052F52;
+    --gold:     #F2B937;
+    --danger:   #FF6B63;
+
+    --on-water: #EAF7FF;
+    --shadow:   0 12px 38px -14px rgba(0, 0, 0, .7);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+:focus-visible { outline: 2px solid var(--crest); outline-offset: 3px; border-radius: 8px; }
+
+/* A água ocupa a tela toda, atrás de tudo */
+#wave {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  display: block;
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: calc(var(--safe-t) + 10px) 20px calc(var(--safe-b) + 14px);
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* ── Topo ───────────────────────────────────────────────── */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand { display: flex; align-items: center; gap: 8px; }
+
+.brand .mark {
+  width: 15px; height: 19px;
+  background: linear-gradient(180deg, var(--crest), var(--water));
+  border-radius: 50% 50% 50% 50% / 68% 68% 32% 32%;
+  clip-path: polygon(50% 0%, 100% 62%, 82% 96%, 18% 96%, 0% 62%);
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+}
+
+.brand .name {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.today {
+  margin-left: 4px;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topActions { margin-left: auto; display: flex; gap: 6px; }
+
+.icon-btn {
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 12px;
+  background: var(--field);
+  color: var(--ink);
+  transition: background .18s;
+}
+.icon-btn:active { background: var(--line); }
+.icon-btn svg {
+  width: 19px; height: 19px;
+  fill: none; stroke: currentColor;
+  stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* ── Números centrais ───────────────────────────────────── */
+
+.stage {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+.readout { text-align: center; }
+
+.amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.045em;
+  line-height: 1;
+}
+.amount #amount {
+  font-size: clamp(64px, 21vw, 104px);
+  font-weight: 800;
+}
+.amount .unit {
+  font-size: clamp(20px, 6vw, 28px);
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: -.01em;
+}
+
+.goalline {
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  margin-top: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--field);
+  display: inline-block;
+  transition: background .3s, color .3s;
+}
+.status.met {
+  background: color-mix(in srgb, var(--gold) 22%, transparent);
+  color: color-mix(in srgb, var(--gold) 78%, var(--ink));
+}
+
+/* Quando a água sobe atrás do texto, o contraste muda */
+body.submerged .amount #amount,
+body.submerged .brand .name,
+body.submerged .today,
+body.submerged .goalline { color: var(--on-water); }
+body.submerged .amount .unit { color: color-mix(in srgb, var(--on-water) 70%, transparent); }
+
+/* ── Base: botões ───────────────────────────────────────── */
+
+.dock { display: grid; gap: 12px; }
+
+.chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.chip {
+  border: 0;
+  border-radius: 15px;
+  padding: 13px 6px 11px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  transition: transform .12s, box-shadow .18s;
+}
+.chip:active { transform: scale(.955); }
+.chip .glyph { font-size: 17px; line-height: 1; }
+.chip .val {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.primary {
+  border: 0;
+  border-radius: 17px;
+  padding: 17px;
+  background: linear-gradient(180deg, var(--water), var(--deep));
+  color: #fff;
+  font-size: 16px;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--deep) 75%, transparent);
+  transition: transform .12s, filter .18s;
+}
+.primary:active { transform: scale(.975); filter: brightness(1.08); }
+.primary svg {
+  width: 19px; height: 19px;
+  fill: none; stroke: currentColor;
+  stroke-width: 2.6; stroke-linecap: round;
+}
+.primary b { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+.undo { height: 18px; display: grid; place-items: center; }
+
+/* Fica sobre a água na maior parte do tempo, então carrega o próprio fundo. */
+.link {
+  border: 0;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 650;
+  padding: 5px 14px;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+
+/* ── Folhas (histórico / ajustes) ───────────────────────── */
+
+.sheet { position: fixed; inset: 0; z-index: 40; }
+.sheet[hidden] { display: none; }
+
+.sheet-scrim {
+  position: absolute; inset: 0;
+  background: rgba(2, 16, 26, .48);
+  backdrop-filter: blur(2px);
+  animation: fade .22s ease;
+}
+
+.sheet-panel {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  max-height: 88%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--ground);
+  border-radius: 22px 22px 0 0;
+  padding: 8px 18px calc(var(--safe-b) + 26px);
+  max-width: 520px;
+  margin: 0 auto;
+  animation: rise .3s cubic-bezier(.22,.9,.3,1);
+}
+
+@keyframes fade { from { opacity: 0; } }
+@keyframes rise { from { transform: translateY(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-scrim, .sheet-panel { animation: none; }
+}
+
+.grabber {
+  width: 38px; height: 5px;
+  border-radius: 3px;
+  background: var(--line);
+  margin: 4px auto 10px;
+}
+
+.sheet-head {
+  display: flex; align-items: center;
+  margin-bottom: 14px;
+}
+.sheet-head h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -.02em;
+}
+.close {
+  margin-left: auto;
+  border: 0; border-radius: 50%;
+  width: 30px; height: 30px;
+  background: var(--field);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.card {
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 15px 16px;
+  margin-bottom: 13px;
+  box-shadow: var(--shadow);
+}
+
+.card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+/* Gráfico de barras */
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  height: 158px;
+}
+.bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+  height: 100%;
+}
+.bar .n {
+  font-size: 9px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.bar .col {
+  width: 100%;
+  border-radius: 7px 7px 3px 3px;
+  background: linear-gradient(180deg, var(--crest), var(--water));
+  min-height: 3px;
+  transition: height .4s cubic-bezier(.3,.9,.3,1);
+}
+.bar.met .col { background: linear-gradient(180deg, var(--gold), color-mix(in srgb, var(--gold) 62%, var(--deep))); }
+.bar.today .d { color: var(--ink); font-weight: 800; }
+.bar .d { font-size: 10px; color: var(--muted); font-weight: 600; }
+
+.rows .row {
+  display: flex;
+  align-items: center;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+}
+.rows .row:last-child { border-bottom: 0; }
+.rows .row b { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* Campos de ajuste */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+}
+.field:last-child { border-bottom: 0; }
+.field > span:first-child { flex: 1; }
+
+/* Com os lembretes desligados, o único campo visível não precisa de divisória. */
+.card:has(#remOn:not(:checked)) .field { border-bottom: 0; }
+
+.stepper {
+  display: flex;
+  align-items: center;
+  background: var(--field);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.stepper button {
+  border: 0; background: none;
+  color: var(--water);
+  width: 36px; height: 34px;
+  font-size: 19px; font-weight: 600;
+}
+.stepper button:active { background: var(--line); }
+.stepper b {
+  min-width: 74px;
+  text-align: center;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+select {
+  border: 0;
+  background: var(--field);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Interruptor */
+.switch {
+  appearance: none;
+  width: 50px; height: 30px;
+  border-radius: 999px;
+  background: var(--line);
+  position: relative;
+  transition: background .22s;
+  flex: none;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  transition: transform .22s cubic-bezier(.3,.9,.3,1);
+}
+.switch:checked { background: var(--water); }
+.switch:checked::after { transform: translateX(20px); }
+
+.hint {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 10px 0 0;
+}
+.hint b { color: var(--ink); }
+
+.ios-share {
+  display: inline-block;
+  width: 12px; height: 15px;
+  vertical-align: -2px;
+  border: 1.6px solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 3px 3px;
+  position: relative;
+}
+.ios-share::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: -8px;
+  width: 1.6px; height: 9px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+.ios-share::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: -8px;
+  width: 6px; height: 6px;
+  border: 1.6px solid currentColor;
+  border-right: 0; border-bottom: 0;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.ghost {
+  width: 100%;
+  margin-top: 11px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--water);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 650;
+}
+.ghost:active { background: var(--field); }
+.ghost.danger { color: var(--danger); }
+
+.version {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 18px 0 0;
+}
+
+/* Aviso flutuante */
+.toast {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--safe-t) + 62px);
+  transform: translate(-50%, -12px);
+  z-index: 60;
+  background: var(--ink);
+  color: var(--ground);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 11px 18px;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .24s, transform .24s;
+  max-width: 84vw;
+  text-align: center;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+</style>
+<!-- A água que preenche a tela -->
+<canvas id="wave" aria-hidden="true"></canvas>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <span class="name">Água</span>
+    </div>
+    <div class="today" id="todayLabel"></div>
+    <div class="topActions">
+      <button class="icon-btn" id="openHistory" aria-label="Ver histórico">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      </button>
+      <button class="icon-btn" id="openSettings" aria-label="Abrir ajustes">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="readout" id="readout">
+      <div class="amount">
+        <span id="amount">0</span><span class="unit">ml</span>
+      </div>
+      <div class="goalline">
+        de <span id="goalText">2000</span> ml · <span id="pct">0%</span>
+      </div>
+      <div class="status" id="status">Comece o dia com um copo</div>
+    </div>
+  </main>
+
+  <div class="dock">
+    <div class="chips" id="chips"><!-- preenchido pelo app.js --></div>
+
+    <button class="primary" id="addCup">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Beber <b id="cupText">250</b> ml</span>
+    </button>
+
+    <div class="undo">
+      <button class="link" id="undo" hidden>Desfazer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────── Histórico ───────────────────────── -->
+<div class="sheet" id="historySheet" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+    <div class="grabber"></div>
+    <div class="sheet-head">
+      <h2 id="histTitle">Histórico</h2>
+      <button class="close" data-close aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Últimos 7 dias</div>
+      <div class="bars" id="bars"></div>
+    </div>
+
+    <div class="card rows">
+      <div class="row"><span>Meta batida</span><b id="statMet">—</b></div>
+      <div class="row"><span>Média diária</span><b id="statAvg">—</b></div>
+      <div class="row"><span>Sequência atual</span><b id="statStreak">—</b></div>
+    </div>
+  </section>
+</div>
+
+<!-- ───────────────────────── Ajustes ───────────────────────── -->
+<div class="sheet" id="settingsSheet" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <div class="grabber"></div>
+    <div class="sheet-head">
+      <h2 id="setTitle">Ajustes</h2>
+      <button class="close" data-close aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Meta e copo</div>
+      <label class="field">
+        <span>Meta diária</span>
+        <span class="stepper">
+          <button data-step="goal:-100" aria-label="Diminuir meta">−</button>
+          <b><span id="goalVal">2000</span> ml</b>
+          <button data-step="goal:100" aria-label="Aumentar meta">+</button>
+        </span>
+      </label>
+      <label class="field">
+        <span>Tamanho do copo</span>
+        <span class="stepper">
+          <button data-step="cup:-50" aria-label="Diminuir copo">−</button>
+          <b><span id="cupVal">250</span> ml</b>
+          <button data-step="cup:50" aria-label="Aumentar copo">+</button>
+        </span>
+      </label>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Lembretes</div>
+
+      <label class="field">
+        <span>Ativar lembretes</span>
+        <input type="checkbox" id="remOn" class="switch" />
+      </label>
+
+      <div id="remOpts">
+        <label class="field">
+          <span>Avisar a cada</span>
+          <select id="remInterval">
+            <option value="30">30 minutos</option>
+            <option value="45">45 minutos</option>
+            <option value="60">1 hora</option>
+            <option value="90">1h30</option>
+            <option value="120">2 horas</option>
+            <option value="180">3 horas</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Começar às</span>
+          <select id="remStart"></select>
+        </label>
+        <label class="field">
+          <span>Parar às</span>
+          <select id="remEnd"></select>
+        </label>
+        <p class="hint" id="remHint"></p>
+        <button class="ghost" id="testNotif">Enviar notificação de teste</button>
+      </div>
+    </div>
+
+    <div class="card" id="installCard">
+      <div class="card-title">Sobre esta prévia</div>
+      <p class="hint">
+        Esta é a <b>versão de teste</b> do app, para você experimentar a interface no
+        celular. Aqui os <b>lembretes não funcionam</b>: para isso o app precisa estar
+        publicado num endereço próprio e instalado na Tela de Início pelo Safari.
+      </p>
+      <button class="ghost" id="installBtn" hidden>Instalar app</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Dados</div>
+      <p class="hint">Tudo fica salvo só neste aparelho. Nada é enviado para servidores.</p>
+      <button class="ghost danger" id="resetDay">Zerar o dia de hoje</button>
+      <button class="ghost danger" id="wipe">Apagar todo o histórico</button>
+    </div>
+
+    <p class="version">Água · versão web (PWA)</p>
+  </section>
+</div>
+
+<!-- Aviso flutuante -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+/* ─────────────────────────────────────────────────────────────
+   Água — PWA de hidratação
+   Estado, animação da água, histórico e lembretes locais.
+   Tudo roda no aparelho: os dados ficam em localStorage.
+   ───────────────────────────────────────────────────────────── */
+
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+const STORE_KEY = 'agua.v1';
+
+/* ── Estado ───────────────────────────────────────────────── */
+
+const DEFAULTS = {
+  goal: 2000,
+  cup: 250,
+  quick: [200, 350, 500],
+  reminders: { on: false, interval: 90, start: 8, end: 22 },
+  history: {},        // { "2026-08-11": 1500 }
+  nextSlot: null,     // timestamp do próximo lembrete
+};
+
+let state = load();
+let lastAction = null;   // para o "Desfazer"
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return structuredClone(DEFAULTS);
+    const saved = JSON.parse(raw);
+    return {
+      ...structuredClone(DEFAULTS),
+      ...saved,
+      reminders: { ...DEFAULTS.reminders, ...(saved.reminders || {}) },
+      history: saved.history || {},
+    };
+  } catch {
+    return structuredClone(DEFAULTS);
+  }
+}
+
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  } catch {
+    toast('Não foi possível salvar neste navegador');
+  }
+}
+
+/* ── Datas ────────────────────────────────────────────────── */
+
+const dayKey = (d = new Date()) => {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
+const todayML = () => state.history[dayKey()] || 0;
+
+function setToday(ml) {
+  const key = dayKey();
+  const value = Math.max(0, Math.round(ml));
+  if (value === 0) delete state.history[key];
+  else state.history[key] = value;
+  save();
+  render();
+}
+
+/* ── Progresso ────────────────────────────────────────────── */
+
+const progress = () => Math.min(todayML() / Math.max(state.goal, 1), 1);
+const reached = () => todayML() >= state.goal;
+
+/* ── A água (canvas) ──────────────────────────────────────── */
+
+const canvas = $('wave');
+const ctx = canvas.getContext('2d');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let level = 0;        // nível desenhado (suavizado)
+let targetLevel = 0;  // nível desejado
+let phase = 0;
+let W = 0, H = 0;
+
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  W = innerWidth;
+  H = innerHeight;
+  canvas.width = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function css(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function drawWave() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Sobe até no máximo 88% da tela, deixando o topo respirar
+  const surface = H * (1 - level * 0.88);
+  const amp = reduceMotion ? 0 : 7 + level * 5;
+
+  const layers = [
+    { off: 0,    a: amp,        speed: 1.0,  alpha: 1,   lift: 0 },
+    { off: 2.1,  a: amp * 0.62, speed: 1.55, alpha: .38, lift: 9 },
+  ];
+
+  const grad = ctx.createLinearGradient(0, surface, 0, H);
+  grad.addColorStop(0, css('--crest'));
+  grad.addColorStop(0.45, css('--water'));
+  grad.addColorStop(1, css('--deep'));
+
+  for (const L of layers) {
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    const base = surface + L.lift;
+    for (let x = 0; x <= W; x += 6) {
+      const y = base
+        + Math.sin(x / 118 + phase * L.speed + L.off) * L.a
+        + Math.sin(x / 47 + phase * L.speed * 1.7 + L.off) * L.a * 0.32;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.globalAlpha = L.alpha;
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Brilho fino na linha d'água
+  if (level > 0.005) {
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 6) {
+      const y = surface + Math.sin(x / 118 + phase) * amp + Math.sin(x / 47 + phase * 1.7) * amp * 0.32;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
+function tick() {
+  level += (targetLevel - level) * 0.075;      // sobe suave
+  if (!reduceMotion) phase += 0.021;
+  drawWave();
+
+  // O texto central fica submerso? Então troca o contraste.
+  const readout = $('readout').getBoundingClientRect();
+  const surface = H * (1 - level * 0.88);
+  document.body.classList.toggle('submerged', surface < readout.top + readout.height * 0.55);
+
+  requestAnimationFrame(tick);
+}
+
+/* ── Render ───────────────────────────────────────────────── */
+
+function render() {
+  const ml = todayML();
+  const pct = Math.round(progress() * 100);
+
+  $('amount').textContent = ml;
+  $('goalText').textContent = state.goal;
+  $('pct').textContent = pct + '%';
+  $('cupText').textContent = state.cup;
+  $('goalVal').textContent = state.goal;
+  $('cupVal').textContent = state.cup;
+
+  const status = $('status');
+  if (reached()) {
+    status.textContent = 'Meta batida! 🎉';
+    status.classList.add('met');
+  } else {
+    status.classList.remove('met');
+    const falta = state.goal - ml;
+    status.textContent = ml === 0
+      ? 'Comece o dia com um copo'
+      : `Faltam ${falta} ml`;
+  }
+
+  targetLevel = progress();
+
+  const label = new Date()
+    .toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })
+    .replace(/\./g, '');
+  $('todayLabel').textContent = label.charAt(0).toUpperCase() + label.slice(1);
+
+  renderChips();
+}
+
+function renderChips() {
+  const box = $('chips');
+  if (box.childElementCount === state.quick.length) return;
+  box.innerHTML = '';
+  const glyphs = ['☕️', '🥤', '🍶'];
+  state.quick.forEach((ml, i) => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.innerHTML = `<span class="glyph">${glyphs[i] || '💧'}</span><span class="val">${ml} ml</span>`;
+    b.addEventListener('click', () => addWater(ml));
+    box.appendChild(b);
+  });
+}
+
+/* ── Ações ────────────────────────────────────────────────── */
+
+function addWater(ml) {
+  const before = todayML();
+  const wasReached = reached();
+  setToday(before + ml);
+
+  lastAction = before;
+  $('undo').hidden = false;
+  clearTimeout(addWater._t);
+  addWater._t = setTimeout(() => { $('undo').hidden = true; }, 6000);
+
+  if (navigator.vibrate) navigator.vibrate(12);
+
+  if (!wasReached && reached()) {
+    toast('Meta do dia batida! 🎉');
+  } else {
+    toast(`+${ml} ml`);
+  }
+  scheduleNext(true);   // beber adia o próximo lembrete
+}
+
+$('addCup').addEventListener('click', () => addWater(state.cup));
+
+$('undo').addEventListener('click', () => {
+  if (lastAction === null) return;
+  setToday(lastAction);
+  lastAction = null;
+  $('undo').hidden = true;
+  toast('Desfeito');
+});
+
+/* ── Histórico ────────────────────────────────────────────── */
+
+function lastDays(n = 7) {
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = dayKey(d);
+    out.push({ key, date: d, ml: state.history[key] || 0 });
+  }
+  return out;
+}
+
+function renderHistory() {
+  const days = lastDays(7);
+  const max = Math.max(state.goal, ...days.map((d) => d.ml), 1);
+  const box = $('bars');
+  box.innerHTML = '';
+
+  const todayK = dayKey();
+  days.forEach((d) => {
+    const met = d.ml >= state.goal && d.ml > 0;
+    const el = document.createElement('div');
+    el.className = 'bar' + (met ? ' met' : '') + (d.key === todayK ? ' today' : '');
+    const label = d.date.toLocaleDateString('pt-BR', { weekday: 'short' })
+      .replace('.', '').slice(0, 3);
+    el.innerHTML =
+      `<span class="n">${d.ml || ''}</span>` +
+      `<span class="col" style="height:${Math.max((d.ml / max) * 100, 0.8)}%"></span>` +
+      `<span class="d">${label}</span>`;
+    box.appendChild(el);
+  });
+
+  const metCount = days.filter((d) => d.ml >= state.goal && d.ml > 0).length;
+  const avg = Math.round(days.reduce((s, d) => s + d.ml, 0) / days.length);
+  $('statMet').textContent = `${metCount} de 7 dias`;
+  $('statAvg').textContent = `${avg} ml`;
+  $('statStreak').textContent = `${streak()} ${streak() === 1 ? 'dia' : 'dias'}`;
+}
+
+function streak() {
+  let n = 0;
+  const d = new Date();
+  // O dia de hoje só conta se a meta já foi batida.
+  if ((state.history[dayKey(d)] || 0) < state.goal) d.setDate(d.getDate() - 1);
+  while ((state.history[dayKey(d)] || 0) >= state.goal) {
+    n++;
+    d.setDate(d.getDate() - 1);
+  }
+  return n;
+}
+
+/* ── Folhas ───────────────────────────────────────────────── */
+
+function openSheet(el) {
+  el.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet(el) {
+  el.hidden = true;
+  document.body.style.overflow = '';
+}
+
+$('openHistory').addEventListener('click', () => {
+  renderHistory();
+  openSheet($('historySheet'));
+});
+$('openSettings').addEventListener('click', () => {
+  syncSettings();
+  openSheet($('settingsSheet'));
+});
+
+document.querySelectorAll('[data-close]').forEach((el) => {
+  el.addEventListener('click', () => closeSheet(el.closest('.sheet')));
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') document.querySelectorAll('.sheet:not([hidden])').forEach(closeSheet);
+});
+
+/* ── Ajustes ──────────────────────────────────────────────── */
+
+document.querySelectorAll('[data-step]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const [field, delta] = btn.dataset.step.split(':');
+    const d = Number(delta);
+    if (field === 'goal') state.goal = clamp(state.goal + d, 500, 6000);
+    if (field === 'cup') state.cup = clamp(state.cup + d, 50, 1000);
+    save();
+    render();
+  });
+});
+
+const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+
+function fillHours(select, selected) {
+  select.innerHTML = '';
+  for (let h = 0; h < 24; h++) {
+    const o = document.createElement('option');
+    o.value = h;
+    o.textContent = `${String(h).padStart(2, '0')}:00`;
+    if (h === selected) o.selected = true;
+    select.appendChild(o);
+  }
+}
+
+function syncSettings() {
+  const r = state.reminders;
+  $('remOn').checked = r.on;
+  $('remInterval').value = String(r.interval);
+  fillHours($('remStart'), r.start);
+  fillHours($('remEnd'), r.end);
+  $('remOpts').style.display = r.on ? '' : 'none';
+  updateHint();
+}
+
+$('remOn').addEventListener('change', async (e) => {
+  if (e.target.checked) {
+    const ok = await askPermission();
+    if (!ok) {
+      e.target.checked = false;
+      return;
+    }
+  }
+  state.reminders.on = e.target.checked;
+  save();
+  $('remOpts').style.display = state.reminders.on ? '' : 'none';
+  scheduleNext(true);
+  updateHint();
+});
+
+['remInterval', 'remStart', 'remEnd'].forEach((id) => {
+  $(id).addEventListener('change', () => {
+    state.reminders.interval = Number($('remInterval').value);
+    state.reminders.start = Number($('remStart').value);
+    state.reminders.end = Number($('remEnd').value);
+    save();
+    scheduleNext(true);
+    updateHint();
+  });
+});
+
+function updateHint() {
+  const r = state.reminders;
+  const el = $('remHint');
+  if (r.start >= r.end) {
+    el.innerHTML = '<b>Atenção:</b> a hora inicial precisa ser menor que a final.';
+    return;
+  }
+  const perDay = Math.floor(((r.end - r.start) * 60) / r.interval) + 1;
+  const base = `Cerca de <b>${perDay} avisos por dia</b>, das ${String(r.start).padStart(2, '0')}h às ${String(r.end).padStart(2, '0')}h. Ao bater a meta, os avisos param até o dia seguinte.`;
+  el.innerHTML = isIOS() && !isStandalone()
+    ? base + '<br><br><b>No iPhone os lembretes só funcionam com o app instalado na Tela de Início</b> (veja abaixo).'
+    : base + '<br><br>Os avisos disparam com o app aberto ou em segundo plano recente. Deixe o app instalado na Tela de Início para melhor resultado.';
+}
+
+$('resetDay').addEventListener('click', () => {
+  setToday(0);
+  toast('Dia zerado');
+});
+
+$('wipe').addEventListener('click', () => {
+  if (!confirm('Apagar todo o histórico? Isso não pode ser desfeito.')) return;
+  state.history = {};
+  save();
+  render();
+  renderHistory();
+  toast('Histórico apagado');
+});
+
+/* ── Notificações ─────────────────────────────────────────── */
+
+const MESSAGES = [
+  'Hora de beber água! 💧',
+  'Bora se hidratar? 🚰',
+  'Um copo d\'água agora vai bem 💧',
+  'Seu corpo agradece: beba um gole 💦',
+  'Pausa para a água! 💧',
+];
+
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function isStandalone() {
+  return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+
+async function askPermission() {
+  if (!('Notification' in window)) {
+    toast('Este navegador não suporta notificações');
+    return false;
+  }
+  if (isIOS() && !isStandalone()) {
+    toast('Instale na Tela de Início para receber lembretes');
+    return false;
+  }
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') {
+    toast('Notificações bloqueadas nos ajustes do sistema');
+    return false;
+  }
+  const res = await Notification.requestPermission();
+  if (res !== 'granted') toast('Permissão de notificação negada');
+  return res === 'granted';
+}
+
+async function notify(body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const opts = {
+    body,
+    icon: 'icons/icon-192.png',
+    badge: 'icons/icon-192.png',
+    tag: 'agua-lembrete',
+    renotify: true,
+  };
+  const reg = await navigator.serviceWorker?.getRegistration();
+  if (reg) reg.showNotification('Água', opts);
+  else new Notification('Água', opts);
+}
+
+/** Calcula o próximo horário de lembrete a partir de agora. */
+function computeNextSlot(from = new Date()) {
+  const r = state.reminders;
+  if (!r.on || r.start >= r.end) return null;
+
+  const step = r.interval * 60000;
+  const d = new Date(from);
+  const startOf = (day) => {
+    const t = new Date(day);
+    t.setHours(r.start, 0, 0, 0);
+    return t;
+  };
+
+  let slot = startOf(d);
+  const endToday = new Date(d);
+  endToday.setHours(r.end, 0, 0, 0);
+
+  if (from >= slot) {
+    const passos = Math.floor((from - slot) / step) + 1;
+    slot = new Date(slot.getTime() + passos * step);
+  }
+  if (slot > endToday) {           // acabou a janela de hoje → amanhã
+    const t = new Date(d);
+    t.setDate(t.getDate() + 1);
+    slot = startOf(t);
+  }
+  return slot.getTime();
+}
+
+function scheduleNext(reset = false) {
+  if (!state.reminders.on) {
+    state.nextSlot = null;
+    save();
+    return;
+  }
+  if (reset || !state.nextSlot || state.nextSlot < Date.now()) {
+    state.nextSlot = computeNextSlot();
+    save();
+  }
+}
+
+/** Verifica a cada 20 s se chegou a hora de avisar. */
+function reminderLoop() {
+  const r = state.reminders;
+  if (!r.on || !state.nextSlot) return;
+
+  if (Date.now() >= state.nextSlot) {
+    const hora = new Date().getHours();
+    const dentroDaJanela = hora >= r.start && hora <= r.end;
+    if (dentroDaJanela && !reached()) {
+      const falta = state.goal - todayML();
+      notify(`${MESSAGES[Math.floor(Math.random() * MESSAGES.length)]} Faltam ${falta} ml para a meta.`);
+    }
+    state.nextSlot = computeNextSlot(new Date());
+    save();
+  }
+}
+
+$('testNotif').addEventListener('click', async () => {
+  const ok = await askPermission();
+  if (!ok) return;
+  await notify('Teste: é assim que o lembrete vai aparecer 💧');
+  toast('Notificação enviada');
+});
+
+/* ── Instalação ───────────────────────────────────────────── */
+
+let deferredPrompt = null;
+
+addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  $('installCard').hidden = false;
+  $('installBtn').hidden = false;
+});
+
+$('installBtn').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  $('installBtn').hidden = true;
+});
+
+/* ── Aviso flutuante ──────────────────────────────────────── */
+
+let toastTimer;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1900);
+}
+
+/* ── Início ───────────────────────────────────────────────── */
+
+function boot() {
+  resize();
+  addEventListener('resize', resize);
+
+  // No iPhone fora da Tela de Início, explica como instalar.
+  if (isIOS() && !isStandalone()) $('installCard').hidden = false;
+
+  render();
+  level = targetLevel * 0.15;   // pequena animação de entrada
+  requestAnimationFrame(tick);
+
+  scheduleNext();
+  setInterval(reminderLoop, 20000);
+  reminderLoop();
+
+  // Virou o dia enquanto o app estava aberto? Redesenha.
+  let shownDay = dayKey();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    if (dayKey() !== shownDay) {
+      shownDay = dayKey();
+      lastAction = null;
+      $('undo').hidden = true;
+    }
+    render();
+    reminderLoop();
+  });
+
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+}
+
+boot();
+
+</script>

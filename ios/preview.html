@@ -1,0 +1,397 @@
+<title>Lembrete de Água — Prévia das telas</title>
+<style>
+  :root {
+    --page-bg: #eef2f7;
+    --page-bg2: #e3eaf3;
+    --ink: #10202e;
+    --muted: #5b6b7a;
+    --card: #ffffff;
+    --line: rgba(16,32,46,.12);
+    --accent: #0a84ff;
+
+    /* iOS-ish tokens used inside the phone screens (kept light on purpose) */
+    --ios-grouped: #f2f2f7;
+    --ios-card: #ffffff;
+    --ios-ink: #1c1c1e;
+    --ios-sec: #8a8a8e;
+    --ios-line: rgba(60,60,67,.12);
+    --blue: #0a84ff;
+    --cyan: #32ade6;
+    --green: #34c759;
+    --orange: #ff9f0a;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --page-bg: #0c1017;
+      --page-bg2: #11161f;
+      --ink: #e7edf3;
+      --muted: #9aa7b4;
+      --card: #161c26;
+      --line: rgba(231,237,243,.12);
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #0c1017;
+    --page-bg2: #11161f;
+    --ink: #e7edf3;
+    --muted: #9aa7b4;
+    --card: #161c26;
+    --line: rgba(231,237,243,.12);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 50% -10%, var(--page-bg2), var(--page-bg));
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  header.page {
+    text-align: center;
+    padding: 40px 20px 8px;
+  }
+  header.page .kicker {
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  header.page h1 {
+    margin: 8px 0 6px;
+    font-size: clamp(24px, 4vw, 34px);
+    letter-spacing: -.02em;
+    text-wrap: balance;
+  }
+  header.page p {
+    margin: 0 auto;
+    max-width: 56ch;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .stage {
+    display: flex;
+    gap: 34px;
+    justify-content: flex-start;
+    align-items: flex-start;
+    padding: 28px clamp(16px, 5vw, 48px) 56px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+  @media (min-width: 1080px) {
+    .stage { justify-content: center; overflow-x: visible; }
+  }
+
+  .device { scroll-snap-align: center; flex: 0 0 auto; }
+  .device .label {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* iPhone frame */
+  .phone {
+    width: 300px;
+    height: 620px;
+    border-radius: 46px;
+    background: #0b0b0d;
+    padding: 11px;
+    box-shadow:
+      0 2px 4px rgba(0,0,0,.35),
+      0 30px 60px -20px rgba(10,40,70,.45),
+      inset 0 0 0 2px #2a2a2e;
+    position: relative;
+  }
+  .screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 36px;
+    overflow: hidden;
+    background: var(--ios-grouped);
+    color: var(--ios-ink);
+    display: flex;
+    flex-direction: column;
+  }
+  .notch {
+    position: absolute;
+    top: 9px; left: 50%;
+    transform: translateX(-50%);
+    width: 108px; height: 26px;
+    background: #0b0b0d;
+    border-radius: 16px;
+    z-index: 6;
+  }
+  .statusbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 13px 22px 2px;
+    font-size: 13px; font-weight: 600;
+    color: var(--ios-ink);
+  }
+  .statusbar .icons { letter-spacing: 1px; }
+
+  .navtitle { padding: 4px 20px 6px; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+  .navtitle.small { font-size: 22px; }
+
+  .content { flex: 1; overflow: hidden; padding: 4px 16px 12px; }
+
+  /* Tab bar */
+  .tabbar {
+    display: flex;
+    border-top: 1px solid var(--ios-line);
+    background: rgba(255,255,255,.86);
+    backdrop-filter: blur(8px);
+  }
+  .tabbar .tab {
+    flex: 1; text-align: center; padding: 8px 0 20px;
+    font-size: 10px; color: var(--ios-sec); font-weight: 600;
+  }
+  .tabbar .tab.active { color: var(--blue); }
+  .tabbar .tab .ico { font-size: 19px; display:block; margin-bottom: 3px; }
+
+  /* Ring */
+  .ringwrap { display: grid; place-items: center; margin: 10px 0 4px; }
+  .ring { position: relative; width: 200px; height: 200px; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .center {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 2px;
+  }
+  .ring .drop { font-size: 26px; }
+  .ring .ml { font-size: 34px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .ring .goal { font-size: 13px; color: var(--ios-sec); }
+
+  .stats { display: flex; gap: 10px; margin: 12px 2px; }
+  .stat {
+    flex: 1; background: var(--ios-card); border-radius: 16px; padding: 13px 8px; text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .stat .v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .t { font-size: 11px; color: var(--ios-sec); margin-top: 2px; }
+  .stat .ico { color: var(--blue); font-size: 15px; }
+
+  .btn-primary {
+    width: 100%; border: 0; cursor: pointer;
+    background: var(--blue); color: #fff;
+    font-size: 15px; font-weight: 600;
+    padding: 14px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: inherit;
+  }
+  .btn-primary:active { filter: brightness(.94); }
+  .quick { display: flex; gap: 10px; margin-top: 10px; }
+  .quick button {
+    flex: 1; cursor: pointer; font-family: inherit;
+    background: rgba(10,132,255,.10); color: var(--blue);
+    border: 0; border-radius: 12px; padding: 11px 4px;
+    font-size: 12px; font-weight: 700;
+  }
+  .quick button:active { background: rgba(10,132,255,.2); }
+  .quick .ico { display: block; font-size: 16px; margin-bottom: 3px; }
+
+  .rowlinks { display:flex; justify-content: space-between; font-size:13px; margin-top:14px; }
+  .rowlinks a { color: var(--blue); text-decoration: none; font-weight: 600; }
+  .rowlinks a.danger { color: #ff3b30; }
+
+  /* History */
+  .panel { background: var(--ios-card); border-radius: 16px; padding: 14px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .panel h3 { margin: 0 0 12px; font-size: 15px; }
+  .bars { display: flex; align-items: flex-end; gap: 8px; height: 150px; }
+  .bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end; }
+  .bar .amt { font-size: 8px; color: var(--ios-sec); font-variant-numeric: tabular-nums; }
+  .bar .col { width: 100%; border-radius: 6px 6px 4px 4px; background: var(--blue); }
+  .bar .col.met { background: var(--green); }
+  .bar .day { font-size: 10px; color: var(--ios-sec); }
+  .srow { display:flex; align-items:center; font-size:14px; padding: 4px 0; }
+  .srow .ico { width: 26px; color: var(--blue); }
+  .srow .val { margin-left:auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .divider { height:1px; background: var(--ios-line); margin: 8px 0; }
+
+  /* Settings (Form) */
+  .grp-title { font-size: 12px; color: var(--ios-sec); text-transform: uppercase; letter-spacing: .04em; margin: 16px 6px 6px; }
+  .list { background: var(--ios-card); border-radius: 12px; overflow: hidden; }
+  .item { display:flex; align-items:center; padding: 12px 14px; font-size: 15px; border-bottom: 1px solid var(--ios-line); }
+  .item:last-child { border-bottom: 0; }
+  .stepper { margin-left:auto; display:flex; align-items:center; gap:0; background: rgba(120,120,128,.12); border-radius: 8px; }
+  .stepper span { width: 34px; text-align:center; font-size: 18px; color: var(--blue); padding: 3px 0; }
+  .stepper .mid { width:1px; height:18px; background: var(--ios-line); }
+  .toggle { margin-left:auto; width: 48px; height: 29px; border-radius: 999px; background: var(--green); position: relative; }
+  .toggle::after { content:""; position:absolute; top:2px; left: 21px; width: 25px; height: 25px; border-radius: 50%; background:#fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .pill { margin-left:auto; color: var(--ios-sec); font-size: 14px; }
+  .item .lead { color: var(--ios-ink); }
+  .note { font-size: 12px; color: var(--ios-sec); padding: 8px 8px 0; line-height: 1.45; }
+  .warn { color: var(--orange); font-size: 12px; padding: 8px 6px 0; display:flex; gap:6px; }
+
+  .foot { text-align:center; color: var(--muted); font-size: 13px; padding: 0 20px 48px; max-width: 60ch; margin: 0 auto; line-height:1.6; }
+  .foot code { background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+  .hint { text-align:center; color: var(--muted); font-size:12px; margin: -8px 0 4px; }
+  @media (min-width: 1080px) { .hint { display:none; } }
+</style>
+
+<header class="page">
+  <div class="kicker">Prévia · SwiftUI</div>
+  <h1>Lembrete de Água</h1>
+  <p>Uma reprodução visual das três telas do app iOS. A tela <strong>Hoje</strong> é interativa — toque nos botões para adicionar água e ver o anel de progresso reagir.</p>
+</header>
+
+<p class="hint">← deslize para ver as outras telas →</p>
+
+<div class="stage">
+
+  <!-- HOJE -->
+  <div class="device">
+    <div class="label">Hoje</div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="icons">􀙇 􀛨 􀋲</span></div>
+        <div class="navtitle small">Lembrete de Água</div>
+        <div class="content">
+          <div class="ringwrap">
+            <div class="ring">
+              <svg width="200" height="200" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(10,132,255,.15)" stroke-width="12"/>
+                <circle id="prog" cx="60" cy="60" r="52" fill="none" stroke="url(#g)" stroke-width="12" stroke-linecap="round"
+                        stroke-dasharray="326.7" stroke-dashoffset="212.4"/>
+                <defs>
+                  <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#32ade6"/><stop offset="1" stop-color="#0a84ff"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="center">
+                <div class="drop" id="dropIco">💧</div>
+                <div class="ml"><span id="ml">700</span> ml</div>
+                <div class="goal">de 2000 ml</div>
+              </div>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="ico">􀘾</div><div class="v" id="pct">35%</div><div class="t">Progresso</div></div>
+            <div class="stat"><div class="ico">􀋊</div><div class="v" id="rem">1300 ml</div><div class="t" id="remt">Faltam</div></div>
+          </div>
+          <button class="btn-primary" onclick="add(250)">＋ Adicionar copo (250 ml)</button>
+          <div class="quick">
+            <button onclick="add(200)"><span class="ico">☕️</span>200 ml</button>
+            <button onclick="add(350)"><span class="ico">🫙</span>350 ml</button>
+            <button onclick="add(500)"><span class="ico">🍶</span>500 ml</button>
+          </div>
+          <div class="rowlinks">
+            <a onclick="reset()" href="javascript:void(0)">⇆ Outra quantidade</a>
+            <a class="danger" onclick="reset()" href="javascript:void(0)">↺ Zerar dia</a>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><span class="ico">💧</span>Hoje</div>
+          <div class="tab"><span class="ico">📊</span>Histórico</div>
+          <div class="tab"><span class="ico">⚙️</span>Ajustes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div class="device">
+    <div class="label">Histórico</div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="icons">􀙇 􀛨 􀋲</span></div>
+        <div class="navtitle">Histórico</div>
+        <div class="content">
+          <div class="panel">
+            <h3>Últimos 7 dias</h3>
+            <div class="bars">
+              <div class="bar"><div class="amt">1800</div><div class="col" style="height:70%"></div><div class="day">Ter</div></div>
+              <div class="bar"><div class="amt">2100</div><div class="col met" style="height:82%"></div><div class="day">Qua</div></div>
+              <div class="bar"><div class="amt">1500</div><div class="col" style="height:58%"></div><div class="day">Qui</div></div>
+              <div class="bar"><div class="amt">2000</div><div class="col met" style="height:78%"></div><div class="day">Sex</div></div>
+              <div class="bar"><div class="amt">2400</div><div class="col met" style="height:94%"></div><div class="day">Sáb</div></div>
+              <div class="bar"><div class="amt">1900</div><div class="col" style="height:74%"></div><div class="day">Dom</div></div>
+              <div class="bar"><div class="amt">700</div><div class="col" style="height:27%"></div><div class="day">Seg</div></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="srow"><span class="ico">🏁</span>Meta batida<span class="val">3 de 7 dias</span></div>
+            <div class="divider"></div>
+            <div class="srow"><span class="ico">📈</span>Média diária<span class="val">1771 ml</span></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><span class="ico">💧</span>Hoje</div>
+          <div class="tab active"><span class="ico">📊</span>Histórico</div>
+          <div class="tab"><span class="ico">⚙️</span>Ajustes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AJUSTES -->
+  <div class="device">
+    <div class="label">Ajustes</div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="icons">􀙇 􀛨 􀋲</span></div>
+        <div class="navtitle">Ajustes</div>
+        <div class="content" style="overflow-y:auto">
+          <div class="grp-title">Meta diária</div>
+          <div class="list">
+            <div class="item"><span class="lead">Meta</span><span class="pill">2000 ml</span>
+              <div class="stepper"><span>−</span><span class="mid"></span><span>＋</span></div></div>
+            <div class="item"><span class="lead">Tamanho do copo</span><span class="pill">250 ml</span>
+              <div class="stepper"><span>−</span><span class="mid"></span><span>＋</span></div></div>
+          </div>
+
+          <div class="grp-title">Lembretes</div>
+          <div class="list">
+            <div class="item"><span class="lead">Ativar lembretes</span><div class="toggle"></div></div>
+            <div class="item"><span class="lead">A cada</span><span class="pill">1h30 ›</span></div>
+            <div class="item"><span class="lead">Começar às</span><span class="pill">8h</span>
+              <div class="stepper"><span>−</span><span class="mid"></span><span>＋</span></div></div>
+            <div class="item"><span class="lead">Parar às</span><span class="pill">22h</span>
+              <div class="stepper"><span>−</span><span class="mid"></span><span>＋</span></div></div>
+          </div>
+
+          <div class="grp-title">Sobre</div>
+          <div class="note">Os lembretes são notificações locais e funcionam mesmo sem internet. Ative as notificações do app em Ajustes do iPhone caso não apareçam.</div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><span class="ico">💧</span>Hoje</div>
+          <div class="tab"><span class="ico">📊</span>Histórico</div>
+          <div class="tab active"><span class="ico">⚙️</span>Ajustes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="foot">
+  Esta é uma prévia em HTML das telas — o app de verdade é nativo em SwiftUI, na pasta <code>ios/</code>. Para rodar no iPhone, abra <code>Agua.xcodeproj</code> no Xcode e aperte Run.
+</p>
+
+<script>
+  const GOAL = 2000, C = 326.7;
+  let total = 700;
+  const $ = id => document.getElementById(id);
+  function render() {
+    const p = Math.min(total / GOAL, 1);
+    $('prog').style.strokeDashoffset = (C * (1 - p)).toFixed(1);
+    $('ml').textContent = total;
+    $('pct').textContent = Math.round(p * 100) + '%';
+    const met = total >= GOAL;
+    $('dropIco').textContent = met ? '✅' : '💧';
+    $('prog').setAttribute('stroke', met ? '#34c759' : 'url(#g)');
+    if (met) { $('rem').textContent = '🎉'; $('remt').textContent = 'Meta batida!'; }
+    else { $('rem').textContent = (GOAL - total) + ' ml'; $('remt').textContent = 'Faltam'; }
+  }
+  function add(ml) { total = Math.max(0, total + ml); render(); }
+  function reset() { total = 0; render(); }
+  render();
+</script>
